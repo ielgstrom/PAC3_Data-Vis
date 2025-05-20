@@ -8,3 +8,5 @@ Aquesta entrega es comprèn dels següents arxius:
 3. hotel_bookings.csv: CSV amb les dades originals a tractar.
 4. cancelation_data.csv: CSV de les dades de cancelacions per països
 5. requests_data.csv: CSV de les cancelacions per nombre de requests fet
+
+Les visualitzacions es poden veure en el següent enllaç: https://public.flourish.studio/story/3110258/
