@@ -1,0 +1,118 @@
+---
+title: "My data"
+author: "Ignasi Elgström"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+NOTE: this tutorial uses R + RStudio + some R packages to show the potential
+of using data visualization for inspecting and analyzing a data set. We strongly
+recommend you to explore the following links:
+
+1) RStudio: https://posit.co/downloads/
+2) ggplot2: https://ggplot2.tidyverse.org/
+3) extensiones: https://exts.ggplot2.tidyverse.org/gallery/
+
+## Load packages
+
+```{r packages}
+library(countrycode)
+library("ggmosaic")
+library("ggplot2")
+library("fitdistrplus")
+library("MASS")
+library("survival")
+library("ggstatsplot")
+library(kableExtra)
+library("tidyverse")
+library(corrplot)
+library(rnaturalearth)
+library(sf)
+```
+
+## Data loading 
+
+
+```{r load data}
+x=read.csv("hotel_bookings.csv", stringsAsFactors = T)
+dim(x)
+```
+## Data Selecction
+
+We will look at the variables that are most related to the one we want to study:
+
+```{r, echo=FALSE}
+cor(x$is_canceled, x[sapply(x, is.numeric)])%>%
+  kbl() %>%
+  kable_styling()
+```
+
+So first, we are going to study the 
+```{r}
+
+#Agafem el any de la reserva
+x$reservation_status_year <- substr(x$reservation_status_date, 1, 4)
+
+#calculem el percentatge de cancelacions per pais i any
+df_summary<- x %>%
+  mutate(reservation_status_year = as.numeric(as.character(reservation_status_year))) %>%
+  group_by(country, reservation_status_year) %>% 
+  summarise(
+    pct_canceled =sum(is_canceled == 1) / n() * 100,
+    .groups = 'drop'
+  )
+
+#Posem el nom estandard del pais
+df_summary$country_name <- countrycode(df_summary$country, origin = "iso3c", destination = "country.name")
+
+#Eliminem l'any 2014 per falta de dades
+df_summary <- df_summary %>%
+  filter(reservation_status_year != 2014)
+
+#Seleccionem els resultats que volem
+df_to_pivot <- df_summary %>%
+  select(country_name, year = reservation_status_year, pct_canceled)
+
+#Formategem el resultat perque li vagi millor a Flourish
+df_to_summaryze <- df_to_pivot %>%
+  pivot_wider(
+    names_from = year,      
+    values_from = pct_canceled,
+    values_fn = mean 
+  )
+
+```
+
+Ens quedem amb el resultat per poder importarlo a Floruish en CSV:
+
+```{r}
+write.csv(df_to_summaryze, "cancelation_data.csv")
+```
+
+```{r}
+#Calculem la quantitat de cancelacions hi ha per variable
+df_summary_req<- x %>%
+  group_by(is_canceled, total_of_special_requests) %>%
+  summarise(total = n(),
+    .groups = 'drop'
+  )
+
+#Mofidiquem els resultats perque li vagi millor a Flourish
+result <- df_summary_req %>%
+  mutate(is_canceled = ifelse(is_canceled == 0, "no_canceled", "canceled")) %>%
+  pivot_wider(
+    names_from = is_canceled,
+    values_from = total,
+  )
+
+result %>%kbl() %>% kable_styling()
+```
+
+```{r}
+write.csv(result, "requests_data.csv")
+```
+
